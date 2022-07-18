@@ -7,20 +7,29 @@ public class PlayerA : MonoBehaviour
 {
     public GameManagerScript gameManager;  //Acesso ao gamemanager e grid manager para fazer uso de métodos
     public GridManagerScript gridManager;  //E variáveis dessas classes
-    public bool withBall = false;
-    private bool chute = false;
+    private PlayerManagerScript playerManager; 
+    public bool withBallA = false;
+    public bool chute = false;
+    public Transform nextPosition = null;
+    public Vector2 startPosition;
+    public float velocity = 2f;
+    public float kickStr = 3f;
+
     
+
     [SerializeField]
     private GameObject myBall;
     private Rigidbody2D ballPhysic;
+    public bool checkAlreadyPosition = false;
 
     //private float forcaChute = 1.0f;
 
     void Start()
     {
         // Obtendo o script desses Game Objects
-        gameManager = GameObject.FindGameObjectWithTag("gamemanager").GetComponent<GameManagerScript>();
-        gridManager = GameObject.FindGameObjectWithTag("gridmanager").GetComponent<GridManagerScript>();
+        gridManager = GameObject.FindObjectOfType<GridManagerScript>();
+        gameManager = GameObject.FindObjectOfType<GameManagerScript>();
+        playerManager = GameObject.FindObjectOfType<PlayerManagerScript>();
         myBall = GameObject.FindGameObjectWithTag("ball");
         ballPhysic = myBall.GetComponent<Rigidbody2D>();
     }
@@ -29,44 +38,80 @@ public class PlayerA : MonoBehaviour
     {
         //Como os jogadores são separados, essa checagem era feito em todas, e como só um possuía a bola
         //no else, acabava sempre SetParent(null) quando tinha mais de um jogadpr em cena
-        if (withBall) // Se estiver com a bola...
+        if (withBallA) // Se estiver com a bola...
         {
-            myBall.transform.SetParent(this.transform); // a bola se torna o filho do jogador
-        }
-        //Agora, antes de setar null, procura-se em toda a cena por um jogador com a bola
-        //se nenhum for encontrado, a bola não está na posse de ninguém
-        else if (!gameManager.FindBall()) // se a bola nao estiver com ninguem
-        {
-            myBall.transform.SetParent(null); //o pai vai comprar cigarro
+            if (Input.GetKeyDown(KeyCode.L)) //pressionado L
+            {
+                //mostro a area de chute em vez da area de movimento
+                gameManager.ShowAreaShoot(this);
+            }
         }
     }
 
     //Ao clicar sobre um jogador do time A
     private void OnMouseDown()
     {
+        Debug.Log("player");
         //Se estivermos na fase de posicionamento remover o player do campo
-        if (! gameManager.matchon)
+        if (!gameManager.matchon)
         {
             DestroyPlayer();
+        }
+        else
+        {
+            // se o jogador selecionado não estiver na area de ação do toque de bola
+            if (!gameManager.onAreaBallMoviment(this.transform))
+            {
+                //significa que mudei de opinião e vou mover outro jogador
+                gameManager.ShowAreaMoviment(this);
+            }
+            else
+            {
+                gameManager.Move(gridManager.GetTileAtPosition(this.transform.position));
+            }
+        }
+    }
+
+    public void MovePlayerToTile()
+    {
+        Transform playerpos = this.transform;
+        if (this.transform.position == nextPosition.position) //se cheguei ao meu destino, paro
+        {
+            gridManager.GetTileAtPosition(nextPosition.position).ToggleFalseVacantTile(); //ocupo a vaga
+
+            nextPosition = null;
+            checkAlreadyPosition = true;
+            //positionPlayerToMove = null;
+            //movePlayer = false;
+        }
+        else
+        {
+            checkAlreadyPosition = false;
+            //enquanto não chegar ao destino continuo me movendo
+            playerpos.position = Vector2.MoveTowards(playerpos.position, nextPosition.position, 10 * Time.deltaTime);
+            
         }
     }
 
     // Funcao para destruir o game object do player e removê-lo do campo
     private void DestroyPlayer()
     {
-        this.withBall = false; // ninguém está com a bola
+        this.withBallA = false; // ninguém está com a bola
         this.myBall.transform.SetParent(null); // ela vira órfã
 
-        gameManager.teamA.Remove(this);
+        playerManager.teamA.Remove(this);
         Destroy(gameObject);
-        gridManager.ToggleVacantTile(transform.position);
+        gridManager.GetTileAtPosition(transform.position).ToggleTrueVacantTile();
+        gridManager.placeA = true;
+        gridManager.placeB = false;
     }
 
     private void OnCollisionEnter2D(Collision2D other)
     {
         if (other.gameObject.CompareTag("ball"))
         {
-            withBall = true;
+            withBallA = true;
+            myBall.transform.SetParent(this.transform); // a bola se torna o filho do jogador
 
             // player A, como ataca pra direita, a bola vai estar mais a direita do player
             myBall.transform.position = new Vector3(this.transform.position.x + 0.6f, this.transform.position.y, this.transform.position.z);
@@ -76,7 +121,8 @@ public class PlayerA : MonoBehaviour
     {
         if (other.gameObject.CompareTag("ball"))
         {
-            withBall = false;
+            withBallA = false;
+            myBall.transform.SetParent(null); //o pai vai comprar cigarro
         }
     }
 }

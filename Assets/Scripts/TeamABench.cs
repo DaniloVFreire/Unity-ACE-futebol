@@ -9,12 +9,12 @@ public class TeamABench : MonoBehaviour
 {
     public bool isClicked = false;        // booleano de controle
     public GridManagerScript gridManager; // referencia ao gridmanager para utilizar métodos dessa classe
+    
     void Start()
     {
         // obtendo o componente script do gridmanager para utilizar alguns métodos e var contidos nele
         gridManager = GameObject.FindGameObjectWithTag("gridmanager").GetComponent<GridManagerScript>();
     }
-
     
     private void OnMouseDown()
     {
